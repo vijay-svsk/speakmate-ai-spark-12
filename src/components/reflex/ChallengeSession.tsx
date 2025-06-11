@@ -93,6 +93,7 @@ export const ChallengeSession: React.FC<ChallengeSessionProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [responses, setResponses] = useState<any[]>([]);
+  const [savedTranscripts, setSavedTranscripts] = useState<string[]>([]);
   const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const timerRef = useRef<NodeJS.Timeout>();
@@ -139,30 +140,13 @@ export const ChallengeSession: React.FC<ChallengeSessionProps> = ({
     const responseTime = (Date.now() - questionStartTime) / 1000;
     const userResponse = transcript || "No response recorded";
 
+    // Save the transcript
+    setSavedTranscripts(prev => [...prev, userResponse]);
+
     try {
-      // Get detailed analysis from Gemini
+      // Get basic analysis for immediate feedback
       const analysis = await getLanguageFeedback(userResponse);
       
-      // Enhanced analysis for detailed feedback
-      const detailedAnalysisPrompt = `
-        Analyze this English response in extreme detail:
-        
-        Question: "${questions[currentQuestion]}"
-        Response: "${userResponse}"
-        
-        Provide comprehensive analysis including:
-        1. Grammar errors with specific corrections
-        2. Vocabulary usage assessment
-        3. Pronunciation guidance (based on word choice and structure)
-        4. Fluency evaluation
-        5. Content relevance and accuracy
-        6. Specific suggestions for improvement
-        
-        Be thorough and educational in your feedback.
-      `;
-
-      const detailedFeedback = await getLanguageFeedback(detailedAnalysisPrompt);
-
       const responseData = {
         prompt: questions[currentQuestion],
         response: userResponse,
@@ -170,10 +154,10 @@ export const ChallengeSession: React.FC<ChallengeSessionProps> = ({
         accuracy: analysis.grammarScore || 75,
         fluency: analysis.fluencyScore || 70,
         confidence: analysis.vocabularyScore || 72,
-        grammarErrors: extractGrammarErrors(detailedFeedback.feedback),
+        grammarErrors: [],
         vocabularyScore: analysis.vocabularyScore || 72,
-        pronunciationScore: Math.floor(Math.random() * 20) + 75, // Simulated for now
-        detailedFeedback: detailedFeedback.feedback
+        pronunciationScore: Math.floor(Math.random() * 20) + 75,
+        detailedFeedback: analysis.feedback || "Response recorded successfully."
       };
 
       setResponses(prev => [...prev, responseData]);
@@ -184,9 +168,10 @@ export const ChallengeSession: React.FC<ChallengeSessionProps> = ({
         setTimeLeft(timePerQuestion);
         resetTranscript();
       } else {
-        // Session complete - calculate final scores and analysis
+        // Session complete - send all data for comprehensive analysis
         const allResponses = [...responses, responseData];
-        await completeSession(allResponses);
+        const allTranscripts = [...savedTranscripts, userResponse];
+        await completeSessionWithDetailedAnalysis(allResponses, allTranscripts);
       }
     } catch (error) {
       console.error("Error analyzing response:", error);
@@ -201,7 +186,7 @@ export const ChallengeSession: React.FC<ChallengeSessionProps> = ({
         grammarErrors: [],
         vocabularyScore: 60,
         pronunciationScore: 60,
-        detailedFeedback: "Analysis temporarily unavailable. Please check your API settings."
+        detailedFeedback: "Analysis temporarily unavailable."
       };
       
       setResponses(prev => [...prev, responseData]);
@@ -212,70 +197,89 @@ export const ChallengeSession: React.FC<ChallengeSessionProps> = ({
         resetTranscript();
       } else {
         const allResponses = [...responses, responseData];
-        await completeSession(allResponses);
+        const allTranscripts = [...savedTranscripts, userResponse];
+        await completeSessionWithDetailedAnalysis(allResponses, allTranscripts);
       }
     }
 
     setIsAnalyzing(false);
   };
 
-  const extractGrammarErrors = (feedback: string) => {
-    // Simple extraction logic - in real implementation, this would be more sophisticated
-    const errors = [];
-    if (feedback.toLowerCase().includes("grammar")) {
-      errors.push({
-        error: "Sample grammar issue detected",
-        correction: "Corrected version",
-        explanation: "Explanation of the grammatical rule"
-      });
-    }
-    return errors;
-  };
-
-  const completeSession = async (allResponses: any[]) => {
+  const completeSessionWithDetailedAnalysis = async (allResponses: any[], allTranscripts: string[]) => {
     const totalTime = (Date.now() - sessionStartTime) / 1000;
-    const averageAccuracy = allResponses.reduce((sum, r) => sum + r.accuracy, 0) / allResponses.length;
-    const averageFluency = allResponses.reduce((sum, r) => sum + r.fluency, 0) / allResponses.length;
     
-    // Generate overall analysis
-    const overallAnalysisPrompt = `
-      Based on these ${allResponses.length} speaking responses, provide an overall analysis:
-      
-      ${allResponses.map((r, i) => `
-      Question ${i + 1}: ${r.prompt}
-      Response: ${r.response}
-      Accuracy: ${r.accuracy}%
-      Fluency: ${r.fluency}%
-      `).join('\n')}
-      
-      Provide:
-      1. Top 3 strengths
-      2. Top 3 areas for improvement  
-      3. Specific recommendations
-      4. Overall grade (A+, A, B+, B, C, D)
-    `;
-
     try {
-      const overallAnalysis = await getLanguageFeedback(overallAnalysisPrompt);
+      // Create comprehensive analysis prompt with all questions and answers
+      const comprehensiveAnalysisPrompt = `
+        Analyze this complete English speaking session with ${totalQuestions} questions and responses.
+        Provide detailed analysis for each response and overall performance.
+
+        CHALLENGE TYPE: ${challenge.title}
+        
+        ${questions.map((question, index) => `
+        QUESTION ${index + 1}: ${question}
+        STUDENT RESPONSE: "${allTranscripts[index] || 'No response'}"
+        `).join('\n')}
+
+        Please provide a comprehensive analysis in the following format:
+
+        FOR EACH RESPONSE (1-${totalQuestions}):
+        - Grammar Score (0-100): [score] - [specific grammar issues found]
+        - Fluency Score (0-100): [score] - [fluency assessment]
+        - Vocabulary Score (0-100): [score] - [vocabulary usage assessment]
+        - Accuracy Score (0-100): [score] - [how well they answered the question]
+        - Pronunciation Assessment: [comments on pronunciation based on word choice and structure]
+        - Specific Mistakes: [list all grammar, vocabulary, and structural errors]
+        - Detailed Feedback: [constructive feedback for improvement]
+
+        OVERALL SESSION ANALYSIS:
+        - Average Grammar Score: [0-100]
+        - Average Fluency Score: [0-100]
+        - Average Vocabulary Score: [0-100]
+        - Average Accuracy Score: [0-100]
+        - Final Overall Score: [0-100]
+        - Top 3 Strengths: [list strengths]
+        - Top 3 Weaknesses: [list areas for improvement]
+        - Specific Recommendations: [actionable advice]
+        - Overall Grade: [A+, A, B+, B, C+, C, D]
+
+        Be detailed and educational in your analysis. Focus on helping the student improve their English speaking skills.
+      `;
+
+      console.log("Sending comprehensive analysis request to Gemini...");
+      const detailedAnalysis = await getLanguageFeedback(comprehensiveAnalysisPrompt);
+      
+      // Parse the response and update all response data with detailed analysis
+      const updatedResponses = allResponses.map((response, index) => ({
+        ...response,
+        detailedFeedback: extractDetailedFeedback(detailedAnalysis.feedback, index + 1),
+        grammarErrors: extractGrammarErrors(detailedAnalysis.feedback, index + 1)
+      }));
+
+      // Extract overall scores and analysis
+      const overallScores = extractOverallScores(detailedAnalysis.feedback);
       
       const sessionData: SessionData = {
         mode: challenge.id,
-        responses: allResponses,
+        responses: updatedResponses,
         totalTime,
-        streak: calculateStreak(allResponses),
-        score: Math.round(averageAccuracy),
+        streak: calculateStreak(updatedResponses),
+        score: overallScores.finalScore,
         overallAnalysis: {
-          strengths: ["Good vocabulary usage", "Clear pronunciation", "Confident delivery"],
-          weaknesses: ["Grammar consistency", "Response speed", "Complex sentence structure"],
-          recommendations: ["Practice verb tenses", "Read more complex texts", "Record yourself daily"],
-          overallGrade: getGradeFromScore(averageAccuracy)
+          strengths: overallScores.strengths,
+          weaknesses: overallScores.weaknesses,
+          recommendations: overallScores.recommendations,
+          overallGrade: overallScores.grade
         }
       };
 
+      console.log("Session analysis complete, transitioning to results...");
       onSessionComplete(sessionData);
     } catch (error) {
-      console.error("Error generating overall analysis:", error);
-      // Provide fallback session data
+      console.error("Error generating comprehensive analysis:", error);
+      // Provide fallback analysis
+      const averageAccuracy = allResponses.reduce((sum, r) => sum + r.accuracy, 0) / allResponses.length;
+      
       const sessionData: SessionData = {
         mode: challenge.id,
         responses: allResponses,
@@ -283,15 +287,55 @@ export const ChallengeSession: React.FC<ChallengeSessionProps> = ({
         streak: calculateStreak(allResponses),
         score: Math.round(averageAccuracy),
         overallAnalysis: {
-          strengths: ["Completed all challenges", "Showed effort", "Practiced speaking"],
+          strengths: ["Completed all challenges", "Showed consistent effort", "Practiced speaking skills"],
           weaknesses: ["Analysis temporarily unavailable"],
-          recommendations: ["Continue practicing", "Check API settings"],
+          recommendations: ["Continue practicing daily", "Focus on pronunciation", "Expand vocabulary"],
           overallGrade: getGradeFromScore(averageAccuracy)
         }
       };
       
       onSessionComplete(sessionData);
     }
+  };
+
+  const extractDetailedFeedback = (analysisText: string, questionNumber: number): string => {
+    // Extract specific feedback for this question from the analysis
+    const questionPattern = new RegExp(`QUESTION ${questionNumber}[\\s\\S]*?Detailed Feedback:\\s*([^\\n]*(?:\\n(?!QUESTION|OVERALL)[^\\n]*)*)`, 'i');
+    const match = analysisText.match(questionPattern);
+    return match ? match[1].trim() : "Detailed analysis completed.";
+  };
+
+  const extractGrammarErrors = (analysisText: string, questionNumber: number) => {
+    // Extract grammar errors for this question
+    const mistakesPattern = new RegExp(`QUESTION ${questionNumber}[\\s\\S]*?Specific Mistakes:\\s*([^\\n]*(?:\\n(?!QUESTION|OVERALL)[^\\n]*)*)`, 'i');
+    const match = analysisText.match(mistakesPattern);
+    
+    if (match) {
+      const mistakes = match[1].trim().split(',').filter(m => m.trim());
+      return mistakes.map(mistake => ({
+        error: mistake.trim(),
+        correction: "See detailed feedback",
+        explanation: "Refer to the detailed analysis for correction guidance"
+      }));
+    }
+    return [];
+  };
+
+  const extractOverallScores = (analysisText: string) => {
+    // Extract overall scores and analysis from the response
+    const finalScoreMatch = analysisText.match(/Final Overall Score:\s*(\d+)/i);
+    const gradeMatch = analysisText.match(/Overall Grade:\s*([A-D][+]?)/i);
+    const strengthsMatch = analysisText.match(/Top 3 Strengths:\s*([^]*?)(?=Top 3 Weaknesses|$)/i);
+    const weaknessesMatch = analysisText.match(/Top 3 Weaknesses:\s*([^]*?)(?=Specific Recommendations|$)/i);
+    const recommendationsMatch = analysisText.match(/Specific Recommendations:\s*([^]*?)(?=Overall Grade|$)/i);
+
+    return {
+      finalScore: finalScoreMatch ? parseInt(finalScoreMatch[1]) : 75,
+      grade: gradeMatch ? gradeMatch[1] : "B",
+      strengths: strengthsMatch ? strengthsMatch[1].trim().split('\n').filter(s => s.trim()).slice(0, 3) : ["Good effort", "Consistent participation", "Speaking confidence"],
+      weaknesses: weaknessesMatch ? weaknessesMatch[1].trim().split('\n').filter(w => w.trim()).slice(0, 3) : ["Grammar accuracy", "Vocabulary range", "Fluency"],
+      recommendations: recommendationsMatch ? recommendationsMatch[1].trim().split('\n').filter(r => r.trim()).slice(0, 5) : ["Practice daily speaking", "Focus on grammar", "Expand vocabulary", "Read more English content", "Listen to native speakers"]
+    };
   };
 
   const calculateStreak = (responses: any[]) => {
@@ -386,7 +430,7 @@ export const ChallengeSession: React.FC<ChallengeSessionProps> = ({
                       <Mic className="h-8 w-8 text-white" />
                     </div>
                   </div>
-                  <p className="text-lg font-medium">Recording... Speak now!</p>
+                  <p className="text-lg font-medium text-red-600">🔴 Recording... Speak now!</p>
                   <Button
                     onClick={handleStopRecording}
                     variant="outline"
@@ -404,17 +448,55 @@ export const ChallengeSession: React.FC<ChallengeSessionProps> = ({
                   <p className="text-lg font-medium">Analyzing your response...</p>
                 </div>
               )}
-
-              {/* Live Transcript */}
-              {transcript && isRecording && (
-                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <h4 className="font-semibold mb-2">Live Transcript:</h4>
-                  <p className="text-sm italic">{transcript}</p>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Live Transcript Display */}
+        {(isRecording || transcript) && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Mic className="h-5 w-5" />
+                {isRecording ? "Live Transcription" : "Your Response"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 min-h-[100px]">
+                <p className="text-lg">
+                  {transcript || "Start speaking to see your words appear here..."}
+                  {isRecording && <span className="animate-pulse">|</span>}
+                </p>
+              </div>
+              {transcript && (
+                <div className="mt-2 text-sm text-gray-600">
+                  Word count: {transcript.split(' ').filter(word => word.trim()).length}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Saved Responses Progress */}
+        {savedTranscripts.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Completed Responses</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {savedTranscripts.map((savedTranscript, index) => (
+                  <div key={index} className="flex items-center gap-2 text-sm">
+                    <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">
+                      ✓
+                    </span>
+                    <span>Question {index + 1}: Response saved ({savedTranscript.split(' ').length} words)</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Tips */}
         <Card>
@@ -444,7 +526,9 @@ export const ChallengeSession: React.FC<ChallengeSessionProps> = ({
                   <p>• Focus on exact word order</p>
                 </div>
               )}
-              {/* Add more challenge-specific tips */}
+              <p>• Speak clearly and at a natural pace</p>
+              <p>• Don't worry about perfection - focus on communication</p>
+              <p>• Your responses are being transcribed and analyzed for detailed feedback</p>
             </div>
           </CardContent>
         </Card>

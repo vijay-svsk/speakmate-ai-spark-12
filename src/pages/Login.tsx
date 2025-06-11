@@ -206,7 +206,7 @@ const Login = () => {
             
             {/* Feature highlights */}
             <div className="space-y-3 text-left">
-              {userRole === 'teacher' ? [
+              {(userRole === 'teacher' ? [
                 "📊 Student performance analytics",
                 "📚 Content management tools", 
                 "⚡ Custom challenge creation",
@@ -216,9 +216,9 @@ const Login = () => {
                 "🗣️ Real-time pronunciation feedback",
                 "🧩 Interactive word puzzles",
                 "📈 Track your progress"
-              ]}.map((feature, index) => (
+              ]).map((featureText, index) => (
                 <div key={index} className="flex items-center gap-3 p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-border/30">
-                  <span className="text-sm font-medium">{feature}</span>
+                  <span className="text-sm font-medium">{featureText}</span>
                 </div>
               ))}
             </div>

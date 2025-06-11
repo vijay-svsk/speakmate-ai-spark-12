@@ -20,6 +20,7 @@ import WordPuzzle from "./pages/WordPuzzle";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import MirrorPractice from "./pages/MirrorPractice";
+import { RoleBasedLayout } from "./components/layout/RoleBasedLayout";
 
 const queryClient = new QueryClient();
 
@@ -47,7 +48,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
+  return <RoleBasedLayout>{children}</RoleBasedLayout>;
 };
 
 const App = () => (

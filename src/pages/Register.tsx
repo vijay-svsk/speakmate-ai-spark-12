@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link, useNavigate } from "react-router-dom";
 import { Volume2, VolumeX, ArrowLeft } from "lucide-react";
 import confetti from 'canvas-confetti';
@@ -12,8 +15,15 @@ const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [age, setAge] = useState("");
+  const [userRole, setUserRole] = useState("student");
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
   const [hoveredElement, setHoveredElement] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Mock data - in real app, this would come from a database
+  const classes = ["Class 6", "Class 7", "Class 8", "Class 9", "Class 10"];
+  const sections = ["A", "B", "C", "D"];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -29,11 +39,27 @@ const Register = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Create user session with role and class info
+    const userSession = {
+      name,
+      email,
+      role: userRole,
+      class: selectedClass,
+      section: selectedSection,
+      age: userRole === "student" ? age : null,
+      loginTime: new Date().toISOString()
+    };
+
+    localStorage.setItem('authToken', `${userRole}-token`);
+    localStorage.setItem('userSession', JSON.stringify(userSession));
+    
     confetti({
       particleCount: 150,
       spread: 80,
       origin: { y: 0.6 }
     });
+    
     setTimeout(() => navigate('/'), 1500);
   };
 
@@ -84,11 +110,7 @@ const Register = () => {
             hoveredElement === 'sound' ? 'animate-pulse' : ''
           }`}
         >
-          {true ? (
-            <VolumeX className="h-6 w-6 text-primary" />
-          ) : (
-            <Volume2 className="h-6 w-6 text-primary" />
-          )}
+          <VolumeX className="h-6 w-6 text-primary" />
         </Button>
       </div>
 
@@ -108,33 +130,87 @@ const Register = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Role Selection */}
+            <div className="space-y-3">
+              <Label className="text-primary font-medium">I am a:</Label>
+              <RadioGroup value={userRole} onValueChange={setUserRole} className="flex flex-col space-y-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="student" id="student" />
+                  <Label htmlFor="student" className="cursor-pointer">👩‍🎓 Student</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="teacher" id="teacher" />
+                  <Label htmlFor="teacher" className="cursor-pointer">🧑‍🏫 Teacher</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-primary">Your Name</Label>
+              <Label htmlFor="name" className="text-primary">Full Name</Label>
               <Input
                 id="name"
-                placeholder="Enter your name"
+                placeholder="Enter your full name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                onFocus={() => {}}
                 className="border-primary/20 focus:border-primary"
                 required
               />
             </div>
             
+            {/* Age field only for students */}
+            {userRole === "student" && (
+              <div className="space-y-2">
+                <Label htmlFor="age" className="text-primary">Age</Label>
+                <Input
+                  id="age"
+                  type="number"
+                  min="5"
+                  max="18"
+                  placeholder="How old are you?"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  className="border-primary/20 focus:border-primary"
+                  required
+                />
+              </div>
+            )}
+
+            {/* Class Selection */}
             <div className="space-y-2">
-              <Label htmlFor="age" className="text-primary">Your Age</Label>
-              <Input
-                id="age"
-                type="number"
-                min="5"
-                max="18"
-                placeholder="How old are you?"
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-                onFocus={() => {}}
-                className="border-primary/20 focus:border-primary"
-                required
-              />
+              <Label className="text-primary">
+                {userRole === "teacher" ? "Class You Teach" : "Your Class"}
+              </Label>
+              <Select value={selectedClass} onValueChange={setSelectedClass} required>
+                <SelectTrigger className="border-primary/20 focus:border-primary">
+                  <SelectValue placeholder="Select a class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((className) => (
+                    <SelectItem key={className} value={className}>
+                      {className}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Section Selection */}
+            <div className="space-y-2">
+              <Label className="text-primary">
+                {userRole === "teacher" ? "Section You Handle" : "Your Section"}
+              </Label>
+              <Select value={selectedSection} onValueChange={setSelectedSection} required>
+                <SelectTrigger className="border-primary/20 focus:border-primary">
+                  <SelectValue placeholder="Select a section" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sections.map((section) => (
+                    <SelectItem key={section} value={section}>
+                      Section {section}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="space-y-2">
@@ -145,7 +221,6 @@ const Register = () => {
                 placeholder="your.email@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onFocus={() => {}}
                 className="border-primary/20 focus:border-primary"
                 required
               />
@@ -158,7 +233,6 @@ const Register = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                onFocus={() => {}}
                 className="border-primary/20 focus:border-primary"
                 required
               />

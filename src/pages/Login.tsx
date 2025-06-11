@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link, useNavigate } from "react-router-dom";
 import { Volume2, VolumeX, Eye, EyeOff } from "lucide-react";
 import confetti from 'canvas-confetti';
@@ -11,6 +12,7 @@ import confetti from 'canvas-confetti';
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [userRole, setUserRole] = useState("student");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -35,11 +37,15 @@ const Login = () => {
         origin: { y: 0.6 }
       });
       
-      // Set authentication token
-      localStorage.setItem('authToken', 'demo-token');
+      // Set authentication token with role
+      localStorage.setItem('authToken', `${userRole}-token`);
       localStorage.setItem('userSession', JSON.stringify({
         email,
         name: email.split('@')[0],
+        role: userRole,
+        // Mock class/section for demo - in real app this would come from database
+        class: userRole === "teacher" ? "Class 8" : "Class 7",
+        section: "A",
         loginTime: new Date().toISOString()
       }));
       
@@ -53,6 +59,9 @@ const Login = () => {
     localStorage.setItem('userSession', JSON.stringify({
       email: 'guest@echo.ai',
       name: 'Guest User',
+      role: 'student',
+      class: 'Class 7',
+      section: 'A',
       loginTime: new Date().toISOString()
     }));
     navigate('/');
@@ -80,6 +89,21 @@ const Login = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Role Selection */}
+                <div className="space-y-3">
+                  <Label className="text-primary font-medium">I am a:</Label>
+                  <RadioGroup value={userRole} onValueChange={setUserRole} className="flex flex-row space-x-6">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="student" id="login-student" />
+                      <Label htmlFor="login-student" className="cursor-pointer">👩‍🎓 Student</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="teacher" id="login-teacher" />
+                      <Label htmlFor="login-teacher" className="cursor-pointer">🧑‍🏫 Teacher</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
                   <Input
@@ -137,7 +161,7 @@ const Login = () => {
                       Signing in...
                     </div>
                   ) : (
-                    "Sign In"
+                    `Sign In as ${userRole === 'teacher' ? 'Teacher' : 'Student'}`
                   )}
                 </Button>
               </form>
@@ -148,7 +172,7 @@ const Login = () => {
                 className="w-full h-12 border-2 hover:bg-muted/50 transition-colors"
                 onClick={handleGuestLogin}
               >
-                Continue as Guest
+                Continue as Guest Student
               </Button>
               <div className="text-center">
                 <span className="text-muted-foreground">New to Echo.ai? </span>
@@ -173,18 +197,26 @@ const Login = () => {
                 Master English with AI
               </h2>
               <p className="text-lg text-muted-foreground">
-                Join thousands of learners improving their English skills with our AI-powered platform.
+                {userRole === 'teacher' 
+                  ? "Empower your students with AI-driven learning tools and comprehensive analytics."
+                  : "Join thousands of learners improving their English skills with our AI-powered platform."
+                }
               </p>
             </div>
             
             {/* Feature highlights */}
             <div className="space-y-3 text-left">
-              {[
+              {userRole === 'teacher' ? [
+                "📊 Student performance analytics",
+                "📚 Content management tools", 
+                "⚡ Custom challenge creation",
+                "👥 Class & section management"
+              ] : [
                 "🎯 Personalized learning paths",
                 "🗣️ Real-time pronunciation feedback",
                 "🧩 Interactive word puzzles",
                 "📈 Track your progress"
-              ].map((feature, index) => (
+              ]}.map((feature, index) => (
                 <div key={index} className="flex items-center gap-3 p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-border/30">
                   <span className="text-sm font-medium">{feature}</span>
                 </div>

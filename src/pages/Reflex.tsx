@@ -6,8 +6,25 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, Brain, Target, RotateCcw, Eye, Zap, Heart, BookOpen } from "lucide-react";
 
+// Export SessionData type for other components
+export interface SessionData {
+  mode: string;
+  responses: Array<{
+    prompt: string;
+    response: string;
+    responseTime: number;
+    accuracy: number;
+    fluency: number;
+    confidence: number;
+  }>;
+  totalTime: number;
+  streak: number;
+  score: number;
+}
+
 const ReflexChallenge = () => {
   const [selectedChallenge, setSelectedChallenge] = useState<string | null>(null);
+  const [sessionData, setSessionData] = useState<SessionData | null>(null);
 
   const challenges = [
     {
@@ -95,6 +112,15 @@ const ReflexChallenge = () => {
 
   const startChallenge = (challengeId: string) => {
     setSelectedChallenge(challengeId);
+    console.log(`Starting challenge: ${challengeId}`);
+    // TODO: Implement challenge logic with Gemini API integration
+  };
+
+  const handleSessionEnd = (data: SessionData) => {
+    setSessionData(data);
+    setSelectedChallenge(null);
+    console.log('Session completed:', data);
+    // TODO: Save session data to MongoDB
   };
 
   if (selectedChallenge) {
@@ -214,7 +240,7 @@ const ReflexChallenge = () => {
             ))}
           </div>
 
-          {/* Coming Soon Features */}
+          {/* Enhanced with AI Technology */}
           <div className="mt-12 text-center">
             <h3 className="text-xl font-bold mb-6">Enhanced with AI Technology</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">

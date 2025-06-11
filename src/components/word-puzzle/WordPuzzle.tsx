@@ -1,21 +1,14 @@
+
 import React, { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Volume2, VolumeX } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import WordGuessGame from "@/components/word-puzzle/WordGuessGame";
 import WordScrambleGame from "@/components/word-puzzle/WordScrambleGame";
 import VocabularyArcade from "@/components/word-puzzle/VocabularyArcade";
 
 // Game options with their details
 const gameOptions = [
-  {
-    id: "word-guess",
-    name: "Word Guess",
-    description: "Guess a 5-letter word in 6 attempts",
-    icon: "🎯",
-    comingSoon: false,
-  },
   {
     id: "word-scramble",
     name: "Word Scramble",
@@ -95,7 +88,6 @@ const WordPuzzle = () => {
           </div>
         ) : (
           <div className="mt-4">
-            {selectedGame === "word-guess" && <WordGuessGame />}
             {selectedGame === "word-scramble" && <WordScrambleGame />}
             {selectedGame === "vocabulary-arcade" && <VocabularyArcade />}
             

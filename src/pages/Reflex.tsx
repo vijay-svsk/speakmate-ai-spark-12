@@ -1,180 +1,119 @@
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
-import { Play, Pause, RotateCcw, Trophy, Zap, Target, Brain, Mic, MicOff, Timer, Star } from "lucide-react";
-import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
-import { EmotionShiftChallenge } from "@/components/reflex/EmotionShiftChallenge";
-import { AIDebateMode } from "@/components/reflex/AIDebateMode";
-import { PrecisionWordChallenge } from "@/components/reflex/PrecisionWordChallenge";
-import { RepetitionMemoryLoop } from "@/components/reflex/RepetitionMemoryLoop";
-import { ShadowMode } from "@/components/reflex/ShadowMode";
-import { VisualPromptResponse } from "@/components/reflex/VisualPromptResponse";
-import { SpeakingAnalytics } from "@/components/reflex/SpeakingAnalytics";
-import { PressureMode } from "@/components/reflex/PressureMode";
+import { Badge } from "@/components/ui/badge";
+import { Mic, Brain, Target, RotateCcw, Eye, Zap, Heart, BookOpen } from "lucide-react";
 
-export type ChallengeMode = 
-  | "emotion-shift" 
-  | "ai-debate" 
-  | "precision-word" 
-  | "repetition-memory" 
-  | "shadow-mode" 
-  | "visual-prompt" 
-  | "pressure-mode";
+const ReflexChallenge = () => {
+  const [selectedChallenge, setSelectedChallenge] = useState<string | null>(null);
 
-export interface SessionData {
-  mode: ChallengeMode;
-  responses: Array<{
-    prompt: string;
-    response: string;
-    responseTime: number;
-    accuracy: number;
-    fluency: number;
-    confidence: number;
-  }>;
-  totalTime: number;
-  streak: number;
-  score: number;
-}
-
-const ReflexChallenge: React.FC = () => {
-  const { toast } = useToast();
-  const [currentMode, setCurrentMode] = useState<ChallengeMode>("emotion-shift");
-  const [isSessionActive, setIsSessionActive] = useState(false);
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [dailyStreak, setDailyStreak] = useState(() => {
-    const saved = localStorage.getItem('reflex-daily-streak');
-    return saved ? parseInt(saved) : 0;
-  });
-  const [sessionData, setSessionData] = useState<SessionData | null>(null);
-  const [showAnalytics, setShowAnalytics] = useState(false);
-  const [energy, setEnergy] = useState(100);
-  const [totalScore, setTotalScore] = useState(() => {
-    const saved = localStorage.getItem('reflex-total-score');
-    return saved ? parseInt(saved) : 0;
-  });
-
-  const {
-    transcript,
-    resetTranscript,
-    startListening,
-    stopListening,
-    isListening,
-    supported
-  } = useSpeechRecognition();
-
-  // Save progress to localStorage
-  useEffect(() => {
-    localStorage.setItem('reflex-daily-streak', dailyStreak.toString());
-    localStorage.setItem('reflex-total-score', totalScore.toString());
-  }, [dailyStreak, totalScore]);
-
-  const startSession = useCallback((mode: ChallengeMode) => {
-    setCurrentMode(mode);
-    setIsSessionActive(true);
-    setShowAnalytics(false);
-    setEnergy(100);
-    setSessionData({
-      mode,
-      responses: [],
-      totalTime: 0,
-      streak: 0,
-      score: 0
-    });
-    resetTranscript();
-    
-    toast({
-      title: "Session Started! 🚀",
-      description: `${getModeTitle(mode)} mode activated. Get ready!`,
-    });
-  }, [resetTranscript, toast]);
-
-  const endSession = useCallback((data: SessionData) => {
-    setIsSessionActive(false);
-    setSessionData(data);
-    setShowAnalytics(true);
-    setCurrentStreak(data.streak);
-    setTotalScore(prev => prev + data.score);
-    
-    // Update daily streak
-    if (data.responses.length > 0) {
-      setDailyStreak(prev => prev + 1);
+  const challenges = [
+    {
+      id: "ai-debate",
+      title: "AI Debate",
+      description: "Argue your point. Gemini gives counterpoints. You must respond logically.",
+      icon: <Brain className="h-8 w-8" />,
+      skill: "Spontaneous speaking, logic, persuasion",
+      color: "from-blue-500 to-cyan-500",
+      difficulty: "Advanced"
+    },
+    {
+      id: "precision-word",
+      title: "Precision Word",
+      description: "You must use 3–5 specific target words in your speech.",
+      icon: <Target className="h-8 w-8" />,
+      skill: "Vocabulary usage, clarity",
+      color: "from-green-500 to-emerald-500",
+      difficulty: "Intermediate"
+    },
+    {
+      id: "memory-loop",
+      title: "Memory Loop",
+      description: "Listen to a sentence and repeat it exactly. Gemini checks accuracy.",
+      icon: <RotateCcw className="h-8 w-8" />,
+      skill: "Memory, focus",
+      color: "from-purple-500 to-violet-500",
+      difficulty: "Beginner"
+    },
+    {
+      id: "shadow-mode",
+      title: "Shadow Mode",
+      description: "Imitate a native speaker sentence in real-time. Pronunciation match is evaluated.",
+      icon: <Mic className="h-8 w-8" />,
+      skill: "Accent, pronunciation",
+      color: "from-orange-500 to-red-500",
+      difficulty: "Advanced"
+    },
+    {
+      id: "visual-response",
+      title: "Visual Response",
+      description: "Describe an image or video shown. Use rich vocabulary.",
+      icon: <Eye className="h-8 w-8" />,
+      skill: "Descriptive power, grammar",
+      color: "from-pink-500 to-rose-500",
+      difficulty: "Intermediate"
+    },
+    {
+      id: "quick-fire",
+      title: "Quick Fire Questions",
+      description: "Answer rapid random questions (personal, opinion-based) under 5 sec each.",
+      icon: <Zap className="h-8 w-8" />,
+      skill: "Thinking speed, fluency",
+      color: "from-yellow-500 to-orange-500",
+      difficulty: "Intermediate"
+    },
+    {
+      id: "emotion-switcher",
+      title: "Emotion Switcher",
+      description: "Say the same sentence with 3 different emotions (e.g., happy, angry, sad).",
+      icon: <Heart className="h-8 w-8" />,
+      skill: "Expressiveness, emotion control",
+      color: "from-red-500 to-pink-500",
+      difficulty: "Beginner"
+    },
+    {
+      id: "story-stretch",
+      title: "Story Stretch",
+      description: "Continue a story after hearing the first 2 sentences. Be creative!",
+      icon: <BookOpen className="h-8 w-8" />,
+      skill: "Creativity, narrative flow",
+      color: "from-indigo-500 to-purple-500",
+      difficulty: "Advanced"
     }
-    
-    stopListening();
-    
-    toast({
-      title: "Session Complete! 🎉",
-      description: `Score: ${data.score} points, Streak: ${data.streak}`,
-    });
-  }, [stopListening, toast]);
+  ];
 
-  const getModeTitle = (mode: ChallengeMode): string => {
-    const titles = {
-      "emotion-shift": "Emotion Shift",
-      "ai-debate": "AI Debate",
-      "precision-word": "Precision Word",
-      "repetition-memory": "Memory Loop",
-      "shadow-mode": "Shadow Mode",
-      "visual-prompt": "Visual Response",
-      "pressure-mode": "Pressure Mode"
-    };
-    return titles[mode];
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case "Beginner": return "bg-green-100 text-green-800";
+      case "Intermediate": return "bg-yellow-100 text-yellow-800";
+      case "Advanced": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
   };
 
-  const getModeDescription = (mode: ChallengeMode): string => {
-    const descriptions = {
-      "emotion-shift": "Express the same sentence with different emotions",
-      "ai-debate": "Argue against AI-generated counterpoints",
-      "precision-word": "Include specific target words in responses",
-      "repetition-memory": "Listen and repeat sentences exactly",
-      "shadow-mode": "Mirror native speaker pronunciation",
-      "visual-prompt": "Describe images and videos in real-time",
-      "pressure-mode": "Sudden-death and time attack challenges"
-    };
-    return descriptions[mode];
+  const startChallenge = (challengeId: string) => {
+    setSelectedChallenge(challengeId);
   };
 
-  if (showAnalytics && sessionData) {
+  if (selectedChallenge) {
     return (
       <AppLayout>
-        <SpeakingAnalytics 
-          sessionData={sessionData}
-          onNewSession={() => setShowAnalytics(false)}
-        />
-      </AppLayout>
-    );
-  }
-
-  if (isSessionActive) {
-    const ModeComponent = {
-      "emotion-shift": EmotionShiftChallenge,
-      "ai-debate": AIDebateMode,
-      "precision-word": PrecisionWordChallenge,
-      "repetition-memory": RepetitionMemoryLoop,
-      "shadow-mode": ShadowMode,
-      "visual-prompt": VisualPromptResponse,
-      "pressure-mode": PressureMode
-    }[currentMode];
-
-    return (
-      <AppLayout>
-        <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10">
-          <ModeComponent
-            onSessionEnd={endSession}
-            transcript={transcript}
-            isListening={isListening}
-            startListening={startListening}
-            stopListening={stopListening}
-            resetTranscript={resetTranscript}
-            energy={energy}
-            setEnergy={setEnergy}
-          />
+        <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10 p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold mb-4">Challenge Starting Soon...</h1>
+              <p className="text-gray-600">AI-powered speaking practice is being prepared</p>
+              <Button 
+                onClick={() => setSelectedChallenge(null)}
+                variant="outline"
+                className="mt-4"
+              >
+                Back to Challenges
+              </Button>
+            </div>
+          </div>
         </div>
       </AppLayout>
     );
@@ -185,234 +124,120 @@ const ReflexChallenge: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10 p-4">
         <div className="max-w-6xl mx-auto">
           
-          {/* Header with Stats */}
-          <div className="text-center mb-8">
+          {/* Header */}
+          <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4">
-              Reflex Challenge 2.0
+              Reflex Challenge
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 mb-6">
-              Your Personal Language Gym - Build Speaking Skills Under Pressure
+              AI-Powered Speaking Practice for English Fluency
             </p>
-            
-            {/* Stats Bar */}
-            <div className="flex justify-center items-center gap-8 mb-8">
-              <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 rounded-full px-4 py-2">
-                <Star className="h-5 w-5 text-yellow-500" />
-                <span className="font-semibold">{totalScore.toLocaleString()}</span>
-                <span className="text-sm text-gray-600">Total Score</span>
+            <div className="flex items-center justify-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-primary" />
+                <span>Powered by Gemini AI</span>
               </div>
-              
-              <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 rounded-full px-4 py-2">
-                <Zap className="h-5 w-5 text-orange-500" />
-                <span className="font-semibold">{dailyStreak}</span>
-                <span className="text-sm text-gray-600">Daily Streak</span>
-              </div>
-              
-              <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 rounded-full px-4 py-2">
-                <Trophy className="h-5 w-5 text-purple-500" />
-                <span className="font-semibold">{currentStreak}</span>
-                <span className="text-sm text-gray-600">Best Session</span>
+              <div className="flex items-center gap-2">
+                <Mic className="h-5 w-5 text-accent" />
+                <span>Real-time Speech Analysis</span>
               </div>
             </div>
           </div>
 
-          {/* Mode Selection Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            
-            {/* Emotion Shift */}
-            <Card className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl flex items-center justify-center text-white text-2xl transform group-hover:scale-110 transition-transform">
-                  🎭
+          {/* Features Overview */}
+          <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 mb-8">
+            <h3 className="text-lg font-bold text-center mb-4">How It Works</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+              <div className="text-center p-3">
+                <div className="w-12 h-12 mx-auto mb-2 bg-primary/20 rounded-full flex items-center justify-center">
+                  <span className="text-xl">🎯</span>
                 </div>
-                <h3 className="text-xl font-bold">Emotion Shift</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Express the same sentence with different emotions
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  className="w-full"
-                  onClick={() => startSession("emotion-shift")}
-                >
-                  Start Challenge
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* AI Debate */}
-            <Card className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-2xl flex items-center justify-center text-white text-2xl transform group-hover:scale-110 transition-transform">
-                  🤖
+                <h4 className="font-semibold mb-1">Choose Challenge</h4>
+                <p className="text-gray-600 dark:text-gray-300">Select from 8 speaking exercises</p>
+              </div>
+              <div className="text-center p-3">
+                <div className="w-12 h-12 mx-auto mb-2 bg-primary/20 rounded-full flex items-center justify-center">
+                  <span className="text-xl">🗣️</span>
                 </div>
-                <h3 className="text-xl font-bold">AI Debate</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Argue against AI-generated counterpoints
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  className="w-full"
-                  onClick={() => startSession("ai-debate")}
-                >
-                  Start Debate
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Precision Word */}
-            <Card className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center text-white text-2xl transform group-hover:scale-110 transition-transform">
-                  🎯
+                <h4 className="font-semibold mb-1">Speak Naturally</h4>
+                <p className="text-gray-600 dark:text-gray-300">Use your microphone to respond</p>
+              </div>
+              <div className="text-center p-3">
+                <div className="w-12 h-12 mx-auto mb-2 bg-primary/20 rounded-full flex items-center justify-center">
+                  <span className="text-xl">🤖</span>
                 </div>
-                <h3 className="text-xl font-bold">Precision Word</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Include specific target words in responses
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  className="w-full"
-                  onClick={() => startSession("precision-word")}
-                >
-                  Start Target Practice
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Memory Loop */}
-            <Card className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl flex items-center justify-center text-white text-2xl transform group-hover:scale-110 transition-transform">
-                  🔁
+                <h4 className="font-semibold mb-1">AI Analysis</h4>
+                <p className="text-gray-600 dark:text-gray-300">Gemini evaluates your performance</p>
+              </div>
+              <div className="text-center p-3">
+                <div className="w-12 h-12 mx-auto mb-2 bg-primary/20 rounded-full flex items-center justify-center">
+                  <span className="text-xl">📈</span>
                 </div>
-                <h3 className="text-xl font-bold">Memory Loop</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Listen and repeat sentences exactly
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  className="w-full"
-                  onClick={() => startSession("repetition-memory")}
-                >
-                  Start Memory Training
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Shadow Mode */}
-            <Card className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-2xl flex items-center justify-center text-white text-2xl transform group-hover:scale-110 transition-transform">
-                  🗣️
-                </div>
-                <h3 className="text-xl font-bold">Shadow Mode</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Mirror native speaker pronunciation
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  className="w-full"
-                  onClick={() => startSession("shadow-mode")}
-                >
-                  Start Shadowing
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Visual Prompt */}
-            <Card className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-teal-400 to-blue-500 rounded-2xl flex items-center justify-center text-white text-2xl transform group-hover:scale-110 transition-transform">
-                  💡
-                </div>
-                <h3 className="text-xl font-bold">Visual Response</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Describe images and videos in real-time
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  className="w-full"
-                  onClick={() => startSession("visual-prompt")}
-                >
-                  Start Visual Challenge
-                </Button>
-              </CardContent>
-            </Card>
-
+                <h4 className="font-semibold mb-1">Get Feedback</h4>
+                <p className="text-gray-600 dark:text-gray-300">Receive detailed improvement tips</p>
+              </div>
+            </div>
           </div>
 
-          {/* Pressure Mode - Special Section */}
-          <Card className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-2 border-red-300 dark:border-red-700 mb-8">
-            <CardHeader className="text-center">
-              <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center text-white text-3xl animate-pulse">
-                🔥
-              </div>
-              <h3 className="text-2xl font-bold text-red-600 dark:text-red-400">Pressure Mode</h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                Sudden-death and time attack challenges - Only for the brave!
-              </p>
-            </CardHeader>
-            <CardContent className="text-center">
-              <Button 
-                size="lg"
-                className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-bold px-8 py-3"
-                onClick={() => startSession("pressure-mode")}
+          {/* Challenge Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {challenges.map((challenge) => (
+              <Card 
+                key={challenge.id}
+                className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50 overflow-hidden"
+                onClick={() => startChallenge(challenge.id)}
               >
-                Enter Pressure Mode 🔥
-              </Button>
-            </CardContent>
-          </Card>
+                <CardHeader className="pb-3">
+                  <div className={`w-16 h-16 mx-auto mb-3 bg-gradient-to-br ${challenge.color} rounded-2xl flex items-center justify-center text-white transform group-hover:scale-110 transition-transform`}>
+                    {challenge.icon}
+                  </div>
+                  <CardTitle className="text-center text-lg">{challenge.title}</CardTitle>
+                  <div className="flex justify-center">
+                    <Badge className={getDifficultyColor(challenge.difficulty)}>
+                      {challenge.difficulty}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 text-center">
+                    {challenge.description}
+                  </p>
+                  <div className="text-xs text-center">
+                    <span className="font-semibold text-primary">Skills: </span>
+                    <span className="text-gray-600 dark:text-gray-300">{challenge.skill}</span>
+                  </div>
+                  <Button className="w-full mt-4 group-hover:bg-primary/90">
+                    Start Challenge
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-          {/* Features Overview */}
-          <Card className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
-            <CardHeader>
-              <h3 className="text-xl font-bold text-center">Why Reflex Challenge 2.0?</h3>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                <div className="text-center p-4">
-                  <Timer className="h-8 w-8 mx-auto mb-2 text-primary" />
-                  <h4 className="font-semibold mb-1">Real-Time Pressure</h4>
-                  <p className="text-gray-600 dark:text-gray-300">Build spontaneous speaking skills under time constraints</p>
-                </div>
-                <div className="text-center p-4">
-                  <Brain className="h-8 w-8 mx-auto mb-2 text-primary" />
-                  <h4 className="font-semibold mb-1">Cognitive Training</h4>
-                  <p className="text-gray-600 dark:text-gray-300">Strengthen memory, focus, and quick thinking</p>
-                </div>
-                <div className="text-center p-4">
-                  <Target className="h-8 w-8 mx-auto mb-2 text-primary" />
-                  <h4 className="font-semibold mb-1">Precision Practice</h4>
-                  <p className="text-gray-600 dark:text-gray-300">Target specific vocabulary and grammar patterns</p>
-                </div>
-                <div className="text-center p-4">
-                  <Trophy className="h-8 w-8 mx-auto mb-2 text-primary" />
-                  <h4 className="font-semibold mb-1">Progress Tracking</h4>
-                  <p className="text-gray-600 dark:text-gray-300">Detailed analytics and achievement system</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {!supported && (
-            <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 mt-6">
-              <CardContent className="text-center p-6">
-                <Mic className="h-12 w-12 mx-auto mb-4 text-amber-600" />
-                <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mb-2">
-                  Speech Recognition Not Available
-                </h3>
-                <p className="text-amber-700 dark:text-amber-300">
-                  For the best experience, please use Chrome or Edge browser which support speech recognition features.
+          {/* Coming Soon Features */}
+          <div className="mt-12 text-center">
+            <h3 className="text-xl font-bold mb-6">Enhanced with AI Technology</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+              <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">🧠 Smart Analysis</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Gemini AI analyzes fluency, grammar, vocabulary, and pronunciation in real-time
                 </p>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">📊 Progress Tracking</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  MongoDB stores your responses and tracks improvement over time
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">🎯 Personalized Tips</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Get specific suggestions based on your speaking patterns and weaknesses
+                </p>
+              </div>
+            </div>
+          </div>
 
         </div>
       </div>

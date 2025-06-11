@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, Brain, Target, RotateCcw, Eye, Zap, Heart, BookOpen } from "lucide-react";
+import { ChallengeSession } from "@/components/reflex/ChallengeSession";
+import { DetailedAnalysis } from "@/components/reflex/DetailedAnalysis";
 
 // Export SessionData type for other components
 export interface SessionData {
@@ -16,15 +18,30 @@ export interface SessionData {
     accuracy: number;
     fluency: number;
     confidence: number;
+    grammarErrors: Array<{
+      error: string;
+      correction: string;
+      explanation: string;
+    }>;
+    vocabularyScore: number;
+    pronunciationScore: number;
+    detailedFeedback: string;
   }>;
   totalTime: number;
   streak: number;
   score: number;
+  overallAnalysis: {
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
+    overallGrade: string;
+  };
 }
 
 const ReflexChallenge = () => {
   const [selectedChallenge, setSelectedChallenge] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   const challenges = [
     {
@@ -112,39 +129,49 @@ const ReflexChallenge = () => {
 
   const startChallenge = (challengeId: string) => {
     setSelectedChallenge(challengeId);
-    console.log(`Starting challenge: ${challengeId}`);
-    // TODO: Implement challenge logic with Gemini API integration
+    setSessionData(null);
+    setShowAnalysis(false);
   };
 
-  const handleSessionEnd = (data: SessionData) => {
+  const handleSessionComplete = (data: SessionData) => {
     setSessionData(data);
     setSelectedChallenge(null);
-    console.log('Session completed:', data);
-    // TODO: Save session data to MongoDB
+    setShowAnalysis(true);
   };
 
-  if (selectedChallenge) {
+  const handleBackToHome = () => {
+    setSelectedChallenge(null);
+    setSessionData(null);
+    setShowAnalysis(false);
+  };
+
+  // If showing detailed analysis
+  if (showAnalysis && sessionData) {
     return (
       <AppLayout>
-        <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10 p-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold mb-4">Challenge Starting Soon...</h1>
-              <p className="text-gray-600">AI-powered speaking practice is being prepared</p>
-              <Button 
-                onClick={() => setSelectedChallenge(null)}
-                variant="outline"
-                className="mt-4"
-              >
-                Back to Challenges
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DetailedAnalysis 
+          sessionData={sessionData} 
+          onBackToHome={handleBackToHome}
+        />
       </AppLayout>
     );
   }
 
+  // If challenge is selected, show the challenge session
+  if (selectedChallenge) {
+    const challenge = challenges.find(c => c.id === selectedChallenge);
+    return (
+      <AppLayout>
+        <ChallengeSession 
+          challenge={challenge!}
+          onSessionComplete={handleSessionComplete}
+          onBack={handleBackToHome}
+        />
+      </AppLayout>
+    );
+  }
+
+  // Main challenge selection page
   return (
     <AppLayout>
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10 p-4">
@@ -186,21 +213,21 @@ const ReflexChallenge = () => {
                   <span className="text-xl">🗣️</span>
                 </div>
                 <h4 className="font-semibold mb-1">Speak Naturally</h4>
-                <p className="text-gray-600 dark:text-gray-300">Use your microphone to respond</p>
+                <p className="text-gray-600 dark:text-gray-300">Auto-recording with timer</p>
               </div>
               <div className="text-center p-3">
                 <div className="w-12 h-12 mx-auto mb-2 bg-primary/20 rounded-full flex items-center justify-center">
                   <span className="text-xl">🤖</span>
                 </div>
                 <h4 className="font-semibold mb-1">AI Analysis</h4>
-                <p className="text-gray-600 dark:text-gray-300">Gemini evaluates your performance</p>
+                <p className="text-gray-600 dark:text-gray-300">Detailed grammar & fluency feedback</p>
               </div>
               <div className="text-center p-3">
                 <div className="w-12 h-12 mx-auto mb-2 bg-primary/20 rounded-full flex items-center justify-center">
                   <span className="text-xl">📈</span>
                 </div>
-                <h4 className="font-semibold mb-1">Get Feedback</h4>
-                <p className="text-gray-600 dark:text-gray-300">Receive detailed improvement tips</p>
+                <h4 className="font-semibold mb-1">Detailed Report</h4>
+                <p className="text-gray-600 dark:text-gray-300">Complete analysis with recommendations</p>
               </div>
             </div>
           </div>
@@ -238,31 +265,6 @@ const ReflexChallenge = () => {
                 </CardContent>
               </Card>
             ))}
-          </div>
-
-          {/* Enhanced with AI Technology */}
-          <div className="mt-12 text-center">
-            <h3 className="text-xl font-bold mb-6">Enhanced with AI Technology</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-              <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-lg">
-                <h4 className="font-semibold mb-2">🧠 Smart Analysis</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Gemini AI analyzes fluency, grammar, vocabulary, and pronunciation in real-time
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-lg">
-                <h4 className="font-semibold mb-2">📊 Progress Tracking</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  MongoDB stores your responses and tracks improvement over time
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 p-4 rounded-lg">
-                <h4 className="font-semibold mb-2">🎯 Personalized Tips</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Get specific suggestions based on your speaking patterns and weaknesses
-                </p>
-              </div>
-            </div>
           </div>
 
         </div>

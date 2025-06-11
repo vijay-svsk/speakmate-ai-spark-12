@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -120,7 +119,11 @@ export const PressureMode: React.FC<PressureModeProps> = ({
       responseTime: 0,
       accuracy: success ? 100 : 0,
       fluency: hasResponse ? 80 : 0,
-      confidence: success ? 90 : 0
+      confidence: success ? 90 : 0,
+      grammarErrors: [],
+      vocabularyScore: hasResponse ? 75 : 0,
+      pronunciationScore: hasResponse ? 80 : 0,
+      detailedFeedback: success ? "Good quick response!" : "Try to respond faster next time."
     };
 
     setResponses(prev => [...prev, responseData]);
@@ -172,12 +175,20 @@ export const PressureMode: React.FC<PressureModeProps> = ({
   };
 
   const endGame = () => {
+    const successRate = responses.length > 0 ? (responses.filter(r => r.accuracy >= 50).length / responses.length) * 100 : 0;
+    
     onSessionEnd({
       mode: "pressure-mode",
       responses,
       totalTime: (Date.now() - sessionStartTime) / 1000,
       streak: streakCount,
-      score
+      score,
+      overallAnalysis: {
+        strengths: successRate >= 70 ? ["Quick thinking", "Fast responses"] : ["Persistence", "Effort"],
+        weaknesses: successRate < 50 ? ["Response speed", "Accuracy under pressure"] : [],
+        recommendations: ["Practice more quick-fire questions", "Work on thinking faster"],
+        overallGrade: successRate >= 80 ? "A" : successRate >= 60 ? "B" : "C"
+      }
     });
   };
 

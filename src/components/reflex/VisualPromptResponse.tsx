@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -156,7 +155,11 @@ export const VisualPromptResponse: React.FC<VisualPromptResponseProps> = ({
       responseTime: responseTime / 1000,
       accuracy,
       fluency,
-      confidence
+      confidence,
+      grammarErrors: [],
+      vocabularyScore: hasResponse ? 75 : 0,
+      pronunciationScore: hasResponse ? 80 : 0,
+      detailedFeedback: accuracy >= 70 ? "Great descriptive language!" : "Try to be more descriptive and use more keywords."
     };
 
     setResponses(prev => [...prev, responseData]);
@@ -165,12 +168,20 @@ export const VisualPromptResponse: React.FC<VisualPromptResponseProps> = ({
     // End session after 6 rounds or if energy is depleted
     if (round >= 6 || energy <= 0) {
       setTimeout(() => {
+        const avgAccuracy = responses.length > 0 ? responses.reduce((sum, r) => sum + r.accuracy, 0) / responses.length : accuracy;
+        
         onSessionEnd({
           mode: "visual-prompt",
           responses: [...responses, responseData],
           totalTime: (Date.now() - sessionStartTime) / 1000,
           streak: responses.filter(r => r.accuracy >= 60).length,
-          score: score + roundScore
+          score: score + roundScore,
+          overallAnalysis: {
+            strengths: avgAccuracy >= 70 ? ["Descriptive language", "Good observation"] : ["Effort", "Participation"],
+            weaknesses: avgAccuracy < 50 ? ["Descriptive vocabulary", "Observation skills"] : [],
+            recommendations: ["Practice describing images", "Build descriptive vocabulary"],
+            overallGrade: avgAccuracy >= 80 ? "A" : avgAccuracy >= 60 ? "B" : "C"
+          }
         });
       }, 3000);
     } else {

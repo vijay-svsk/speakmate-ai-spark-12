@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -168,7 +167,11 @@ export const ShadowMode: React.FC<ShadowModeProps> = ({
       responseTime: 0, // Not applicable for shadowing
       accuracy,
       fluency,
-      confidence
+      confidence,
+      grammarErrors: [],
+      vocabularyScore: hasResponse ? 75 : 0,
+      pronunciationScore: accuracy,
+      detailedFeedback: accuracy >= 70 ? "Great shadowing! Good pronunciation match." : "Keep practicing pronunciation and timing."
     };
 
     setResponses(prev => [...prev, responseData]);
@@ -177,12 +180,20 @@ export const ShadowMode: React.FC<ShadowModeProps> = ({
     // End session after 5 rounds or if energy is depleted
     if (round >= 5 || energy <= 0) {
       setTimeout(() => {
+        const avgAccuracy = responses.length > 0 ? responses.reduce((sum, r) => sum + r.accuracy, 0) / responses.length : accuracy;
+        
         onSessionEnd({
           mode: "shadow-mode",
           responses: [...responses, responseData],
           totalTime: (Date.now() - sessionStartTime) / 1000,
           streak: responses.filter(r => r.accuracy >= 60).length,
-          score: score + roundScore
+          score: score + roundScore,
+          overallAnalysis: {
+            strengths: avgAccuracy >= 70 ? ["Good pronunciation", "Accurate shadowing"] : ["Effort", "Persistence"],
+            weaknesses: avgAccuracy < 50 ? ["Pronunciation accuracy", "Listening skills"] : [],
+            recommendations: ["Practice more shadowing exercises", "Focus on pronunciation"],
+            overallGrade: avgAccuracy >= 80 ? "A" : avgAccuracy >= 60 ? "B" : "C"
+          }
         });
       }, 4000);
     } else {

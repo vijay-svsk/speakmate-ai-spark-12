@@ -5,6 +5,7 @@ interface SpeechRecognitionHook {
   transcript: string;
   isListening: boolean;
   supported: boolean;
+  lastError: string | null;
   startListening: () => void;
   stopListening: () => void;
   resetTranscript: () => void;
@@ -13,15 +14,16 @@ interface SpeechRecognitionHook {
 export const useSpeechRecognition = (): SpeechRecognitionHook => {
   const [transcript, setTranscript] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   const supported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
 
   const startListening = useCallback(() => {
     if (!supported) return;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognitionRef.current = new SpeechRecognition();
+    const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognitionClass();
     
     recognitionRef.current.continuous = true;
     recognitionRef.current.interimResults = true;
@@ -29,9 +31,10 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
 
     recognitionRef.current.onstart = () => {
       setIsListening(true);
+      setLastError(null);
     };
 
-    recognitionRef.current.onresult = (event) => {
+    recognitionRef.current.onresult = (event: any) => {
       let finalTranscript = '';
       
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -49,8 +52,9 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
       setIsListening(false);
     };
 
-    recognitionRef.current.onerror = () => {
+    recognitionRef.current.onerror = (event: any) => {
       setIsListening(false);
+      setLastError(event.error || 'Speech recognition error');
     };
 
     recognitionRef.current.start();
@@ -65,12 +69,14 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
 
   const resetTranscript = useCallback(() => {
     setTranscript('');
+    setLastError(null);
   }, []);
 
   return {
     transcript,
     isListening,
     supported,
+    lastError,
     startListening,
     stopListening,
     resetTranscript

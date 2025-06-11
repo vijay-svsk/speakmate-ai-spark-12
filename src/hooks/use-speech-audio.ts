@@ -1,17 +1,21 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 interface SpeechAudioHook {
   isListening: boolean;
   transcript: string;
+  isSpeaking: boolean;
   handleStartRecording: () => void;
   handleStopRecording: () => void;
   speakText: (text: string) => void;
+  stopSpeaking: () => void;
 }
 
 export const useSpeechAudio = (): SpeechAudioHook => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   const handleStartRecording = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -19,18 +23,18 @@ export const useSpeechAudio = (): SpeechAudioHook => {
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
     
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    recognitionRef.current.continuous = true;
+    recognitionRef.current.interimResults = true;
+    recognitionRef.current.lang = 'en-US';
 
-    recognition.onstart = () => {
+    recognitionRef.current.onstart = () => {
       setIsListening(true);
     };
 
-    recognition.onresult = (event) => {
+    recognitionRef.current.onresult = (event: any) => {
       let finalTranscript = '';
       
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -44,18 +48,21 @@ export const useSpeechAudio = (): SpeechAudioHook => {
       }
     };
 
-    recognition.onend = () => {
+    recognitionRef.current.onend = () => {
       setIsListening(false);
     };
 
-    recognition.onerror = () => {
+    recognitionRef.current.onerror = () => {
       setIsListening(false);
     };
 
-    recognition.start();
+    recognitionRef.current.start();
   }, []);
 
   const handleStopRecording = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
     setIsListening(false);
   }, []);
 
@@ -64,15 +71,29 @@ export const useSpeechAudio = (): SpeechAudioHook => {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 0.8;
       utterance.pitch = 1;
+      
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      
       window.speechSynthesis.speak(utterance);
+    }
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
     }
   }, []);
 
   return {
     isListening,
     transcript,
+    isSpeaking,
     handleStartRecording,
     handleStopRecording,
-    speakText
+    speakText,
+    stopSpeaking
   };
 };
